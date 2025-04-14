@@ -1,3 +1,36 @@
+# main.tf
+# Create backup vaults
+module "backup_vault" {
+  source = "./modules/backup_vault"
+  for_each = local.vault_resource_mappings
+
+  vault_name          = "backup-vault-${each.value.workload}-${each.value.environment}-${each.value.region}"
+  resource_group_name = each.value.resource_group
+  location            = each.value.region
+}
+
+# Assign Disk Backup Reader role to matching disks
+resource "azurerm_role_assignment" "disk_backup_reader" {
+  for_each = {
+    for combo_key, vault in local.vault_resource_mappings : 
+    combo_key => vault
+    if length(vault.disks) > 0
+  }
+
+  dynamic "disk_assignment" {
+    for_each = {
+      for disk in each.value.disks : 
+      "${each.key}-${disk.name}" => disk
+    }
+    content {
+      scope              = "/subscriptions/${var.subscription_id}/resourceGroups/${disk_assignment.value.resource_group_name}/providers/Microsoft.Compute/disks/${disk_assignment.value.name}"
+      role_definition_id = "/subscriptions/${var.subscription_id}/providers/Microsoft.Authorization/roleDefinitions/3e5e47e6-65f7-47ef-90b5-e5dd4d455f24" # Disk Backup Reader
+      principal_id       = module.backup_vault[each.key].vault_principal_id
+    }
+  }
+}
+
+# Assign Storage Account Backup Contributor role to matching storage accounts
 resource "azurerm_role_assignment" "storage_backup_contributor" {
   for_each = {
     for combo_key, vault in local.vault_resource_mappings : 
@@ -18,6 +51,7 @@ resource "azurerm_role_assignment" "storage_backup_contributor" {
   }
 }
 
+# Assign PostgreSQL Flexible Server Long Term Retention Backup role to matching PostgreSQL servers
 resource "azurerm_role_assignment" "postgresql_ltr_backup" {
   for_each = {
     for combo_key, vault in local.vault_resource_mappings : 
