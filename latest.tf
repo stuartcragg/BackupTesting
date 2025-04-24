@@ -29,9 +29,9 @@ locals {
     if(
       lookup(pg.tags, "backup", "none") != "none" &&
       lookup(pg.tags, "backup", "none") != "disabled" &&
-      contains(keys(local.postgres_backup_policies), lookup(pg.tags, "backup", "none")) &&
-      contains(keys(local.workload_env_region_combinations), "${try(pg.tags.workload, "unknown")}-${try(pg.tags.environment, "unknown")}-${try(pg.location, "unknown")}")
-    )
+      contains(keys(local.postgres_backup_policies), lookup(pg.tags, "backup", "none"))
+    ) &&
+    contains(keys(local.workload_env_region_combinations), "${try(pg.tags.workload, "unknown")}-${try(pg.tags.environment, "unknown")}-${try(pg.location, "unknown")}")
   }
 
   workload_env_region_combinations = {
