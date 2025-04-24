@@ -70,6 +70,17 @@ locals {
     contains(keys(local.workload_env_region_combinations), "${try(md.tags.workload, "unknown")}-${try(md.tags.environment, "unknown")}-${try(md.location, "unknown")}")
   }
 
+ postgresql_flexible_instances = {
+    for pg in local.postgresql_flexible :
+    pg.name => pg
+    if(
+      lookup(pg.tags, "backup", "none") != "none" &&
+      lookup(pg.tags, "backup", "disabled") != "disabled" &&
+      lookup(pg.tags, "backup", "none") != "none" ? contains(keys(local.postgres_backup_policies), lookup(md.tags, "backup", "none")) : false
+    ) &&
+    contains(keys(local.workload_env_region_combinations), "${try(pg.tags.workload, "unknown")}-${try(pg.tags.environment, "unknown")}-${try(pg.location, "unknown")}")
+  }
+
   # ----------------------------------------------------------------------------------------------------------------------
   # Group workloads by environment and region
   # ----------------------------------------------------------------------------------------------------------------------
