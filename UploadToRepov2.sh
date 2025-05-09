@@ -55,7 +55,7 @@ fi
 git config --global user.email "azure-devops@yourdomain.com"
 git config --global user.name "Azure DevOps Pipeline"
 
-# Step 4: Add the JSON files
+# Step 4: Add only *.json files in azure_vault/
 cd "$REPO_DIR"
 for file in $JSON_FILES; do
   echo "Adding $file to git"
@@ -65,17 +65,20 @@ for file in $JSON_FILES; do
   fi
 done
 
-# Step 5: Check for changes before committing
-echo "Checking for changes with git status --porcelain:"
-GIT_STATUS=$(git status --porcelain)
-echo "$GIT_STATUS"
-if [ -n "$GIT_STATUS" ]; then
-  echo "Changes detected, committing and pushing"
+# Step 5: Check for staged *.json changes before committing
+echo "Checking for staged changes with git diff --name-only --staged:"
+STAGED_FILES=$(git diff --name-only --staged -- azure_vault/*.json)
+echo "$STAGED_FILES"
+if [ -n "$STAGED_FILES" ]; then
+  echo "Staged *.json changes detected, committing and pushing"
   TIMESTAMP=$(date +%Y%m%d%H%M%S)
   git commit -m "Add JSON files for environments $environments ($TIMESTAMP)"
   echo "Pushing changes to branch $BRANCH_NAME"
   git push origin HEAD:"$BRANCH_NAME"
 else
-  echo "No changes to commit for environments $environments"
-  exit 0  # Exit successfully if no changes
+  echo "No staged *.json changes to commit for environments $environments"
+  # Log git status --porcelain for debugging
+  echo "Git status --porcelain output for reference:"
+  git status --porcelain || true
+  exit 0  # Exit successfully if no staged *.json changes
 fi
