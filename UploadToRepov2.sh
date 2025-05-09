@@ -6,20 +6,23 @@ set -e
 # Define the branch name variable
 BRANCH_NAME="main"  # Change this to the desired branch (e.g., 'dev', 'feature/json-upload')
 
-# Define the environments variable (e.g., "dev,tst" or "acc,prd")
-# This should be set before running the script, e.g., via pipeline variable or environment
-: ${environments:?"Error: environments variable not set. Set to 'dev,tst' or 'acc,prd'."}
+# Get environments from command-line argument
+environments="$1"
+if [ -z "$environments" ]; then
+  echo "Error: environments argument not provided. Usage: $0 \"dev,tst\" or $0 \"acc,prd\""
+  exit 1
+fi
 
-# Step 1: Ensure the repository is checked out and json directory exists
+# Step 1: Ensure the repository is checked out and azure_vault directory exists
 REPO_DIR=$(pwd)  # Confirmed as /var/adoagent/_work/1/s/self
-JSON_DIR="$REPO_DIR/azure_vault/json"  # Path to azure_vault/json folder
+JSON_DIR="$REPO_DIR/azure_vault"  # Path to azure_vault folder
 
 echo "Repository root: $REPO_DIR"
 echo "JSON directory: $JSON_DIR"
 
-# Create the json directory if it doesn't exist
+# Create the azure_vault directory if it doesn't exist
 if [ ! -d "$JSON_DIR" ]; then
-  echo "Creating json directory at $JSON_DIR"
+  echo "Creating azure_vault directory at $JSON_DIR"
   mkdir -p "$JSON_DIR"
 fi
 
@@ -38,7 +41,7 @@ for env in "${ENV_ARRAY[@]}"; do
   for file in $ENV_FILES; do
     echo "Moving (overwriting) $file to $JSON_DIR/"
     mv -f "$file" "$JSON_DIR/"
-    JSON_FILES="$JSON_FILES azure_vault/json/$file"
+    JSON_FILES="$JSON_FILES azure_vault/$file"
   done
 done
 
@@ -52,7 +55,7 @@ fi
 git config --global user.email "azure-devops@yourdomain.com"
 git config --global user.name "Azure DevOps Pipeline"
 
-# Step 4: Add and commit the JSON files
+# Step 4: Add the JSON files
 cd "$REPO_DIR"
 for file in $JSON_FILES; do
   echo "Adding $file to git"
@@ -62,15 +65,14 @@ for file in $JSON_FILES; do
   fi
 done
 
-# Check if there are changes to commit
+# Step 5: Check for changes before committing
 if git status --porcelain | grep -q .; then
+  echo "Changes detected, committing and pushing"
   TIMESTAMP=$(date +%Y%m%d%H%M%S)
   git commit -m "Add JSON files for environments $environments ($TIMESTAMP)"
+  echo "Pushing changes to branch $BRANCH_NAME"
+  git push origin HEAD:"$BRANCH_NAME"
 else
   echo "No changes to commit for environments $environments"
   exit 0  # Exit successfully if no changes
 fi
-
-# Step 5: Push the JSON files to the repository
-echo "Pushing changes to branch $BRANCH_NAME"
-git push origin HEAD:"$BRANCH_NAME"
