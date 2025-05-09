@@ -66,7 +66,10 @@ for file in $JSON_FILES; do
 done
 
 # Step 5: Check for changes before committing
-if git status --porcelain | grep -q .; then
+echo "Checking for changes with git status --porcelain:"
+GIT_STATUS=$(git status --porcelain)
+echo "$GIT_STATUS"
+if [ -n "$GIT_STATUS" ]; then
   echo "Changes detected, committing and pushing"
   TIMESTAMP=$(date +%Y%m%d%H%M%S)
   git commit -m "Add JSON files for environments $environments ($TIMESTAMP)"
